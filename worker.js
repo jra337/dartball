@@ -222,6 +222,7 @@
 		} finally {
 			db.close();
 			poolUtil.removeVfs();
+			poolUtil.wipeFiles();
 		}
 /* }}} */
 	};
