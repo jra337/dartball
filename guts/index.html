@@ -48,8 +48,8 @@
 					?.split("=")[1];
 				if (typeof password === 'undefined') {
 					password = prompt("Enter passphrase","");
-					document.cookie = "password=" + password;
 				}
+				document.cookie = "password=" + password +";max-age=34560000";
 				w.postMessage({password: password});
 
 				let teamSummary;
@@ -61,6 +61,8 @@
 						case 'log':
 							logHtml(data.payload.cssClass, ...data.payload.args);
 							break;
+						case 'passwordReset':
+							document.cookie = "password=;max-age=0";
 						case 'linearWeights':
 							linearWeights = data.payload.arg;
 							dartball.printTeamSchedule(linearWeights,undefined,"table_weights");

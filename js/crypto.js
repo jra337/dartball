@@ -81,12 +81,12 @@ const decrypt = async (buffer, password, pbkdf2iterations = 10000) => {
 	const ivbytes = pbkdf2bytes.slice(32);
 
 	const key = await globalThis.crypto.subtle.importKey('raw', keybytes, { name: 'AES-CBC', length: 256 }, false, ['decrypt'])
-	const plaintextbytes = await globalThis.crypto.subtle.decrypt({ name: "AES-CBC", iv: ivbytes }, key, cipherbytes.slice(16))
+	
+	const plaintextbytes = await globalThis.crypto.subtle.decrypt(
+				{ name: "AES-CBC", iv: ivbytes }, key, cipherbytes.slice(16));
 
 	if (!plaintextbytes) {
 		console.log('Error decrypting file.  See console log.');
-		return;
 	}
 	return plaintextbytes;
 }
-

@@ -35,33 +35,46 @@
 	importScripts('/js/crypto.js');
 	
 	const main = async function(sqlite3,password) {
-/* {{{ */
+		/* {{{ */
 		const urlParams = new URL(globalThis.location.href).searchParams;
 		const id_team = urlParams.get("t") ?? 13;
 		const id_season = urlParams.get("y") ?? 4;
+
 		const capi = sqlite3.capi/*C-style API*/;
 		const oo = sqlite3.oo1/*high-level OO API*/;
-		const arrayBuffer = await fetch('/db/dartball.crypt')
-			.then(r => r.arrayBuffer())
-			.then(r => decrypt(r,password));
-
-		// assuming arrayBuffer contains the result of the above operation...
-		const p = sqlite3.wasm.allocFromTypedArray(arrayBuffer);
-		const poolUtil = await sqlite3.installOpfsSAHPoolVfs();
-		poolUtil.importDb("/dartball.sqlite3",arrayBuffer);
-		const db = new poolUtil.OpfsSAHPoolDb("/dartball.sqlite3");
-		const rc = capi.sqlite3_deserialize(
-			db.pointer, 'main', p, arrayBuffer.byteLength, arrayBuffer.byteLength,
-			sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE
-		);
-		db.checkRc(rc);
 
 		log("sqlite3 version",capi.sqlite3_libversion());
-		log("database bytelength = ",arrayBuffer.byteLength);
-   	log("transient db =",db.filename);
+
+		// load database into arrayBuffer
+		const arrayBuffer = await fetch('/db/dartball.crypt')
+			.then(r => r.arrayBuffer())
+			.then(r => decrypt(r,password))
+			.catch(() => {
+					error("Decryption failed. Check passphrase [" + password + "]");
+					postData('passwordReset');
+					});
+
+			log("database bytelength = ",arrayBuffer.byteLength);
+
+			// assuming arrayBuffer contains the result of the above operation...
+			const p = sqlite3.wasm.allocFromTypedArray(arrayBuffer);
+			const poolUtil = await sqlite3.installOpfsSAHPoolVfs()
+				.catch(e => {error(e);});
+
+			log("vfsName = ",poolUtil.vfsName);
+
+			poolUtil.importDb("/dartball.sqlite3",arrayBuffer);
+			const db = new poolUtil.OpfsSAHPoolDb("/dartball.sqlite3");
+			const rc = capi.sqlite3_deserialize(
+				db.pointer, 'main', p, arrayBuffer.byteLength, arrayBuffer.byteLength,
+				sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE
+			);
+			db.checkRc(rc);
+
+		 	log("transient db =",db.filename);
 		
 		try {
-			//  query database{{{
+			// query database
 			// team schedule
 			let query = 'SELECT week'
 				+', date_series'/* {{{ */
@@ -96,7 +109,6 @@
 				+' ORDER BY id_series ASC';/* }}} */
 			let scheduleResult = sql2objArr(query,db);
 			postData('schedule',scheduleResult);
-			//console.log('schedule = ',scheduleResult);
 	
 			// team stat totals
 			query = 'SELECT team_g'
@@ -136,7 +148,6 @@
 				+' WHERE id_team = '+ id_team +' AND id_season = '+ id_season;/* }}} */
 			let teamSummary = sql2objArr(query,db)[0];
 			postData('teamSummary',teamSummary);
-			//console.log('teamSummary =',teamSummary);
 	
 			query = 'SELECT name'
 				+', tm_short as team'/* {{{ */
@@ -200,21 +211,21 @@
 
 			let playerStatsMax = (sql2objArr(query,db))[0];
 			postData('playerStatsSummaryMax',playerStatsMax);
-			//console.log('playerStatsMax =',playerStatsMax);
-
-			/* }}} */
+			
 		} catch(e) {
-			if(e instanceof sqlite3.SQLite3Error){/* {{{ */
+			/* {{{ */
+			if(e instanceof sqlite3.SQLite3Error){
 				error("SQLite3Error:",e.message);
 			}else{
 				throw e;
-			}/* }}} */
+			}
+			/* }}} */
 		} finally {
 			db.close();
 			poolUtil.removeVfs();
 			poolUtil.wipeFiles();
 		}
-/* }}} */
+		/* }}} */
 	};
   
 	self.onmessage = function(e) {
