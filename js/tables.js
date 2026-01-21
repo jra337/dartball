@@ -293,7 +293,7 @@ class dartball {
 				p = document.createElement("p");
 				div.appendChild(p);
 				p.innerHTML = "<strong>Runs:</strong> " 
-					+ teamSummary.rbi 
+					+ teamSummary.runs 
 					+ " (" + (teamSummary.r_per_g).toFixed(2) + " r/g)";
 		
 				p = document.createElement("p");
